@@ -93,12 +93,36 @@
 			# Get the rule by section ID
 			$section_id = $entry->_fields['section_id'];
 			$rule = $this->_get_section_rule($section_id);
-			if(empty($rule)) return false;
+			if(empty($rule)) return false;			
 			
+			# Get the XML
 			$simplexml = $this->_construct_entry_xml($request_id, $rule['datasources']);
-			print_r($simplexml);
 			
-			exit();
+			$replacements = array();
+			preg_match_all('/\{[^\}]+\}/', $rule['redirect'], $matches);
+			foreach ($matches[0] as $match)
+			{
+				switch (trim($match, '{}')) {
+					case '$root':
+						$replacements[$match] = URL;
+						break;
+					case 'system:id':
+						$replacements[$match] = $request_id;
+						break;
+					default:
+						$result = $simplexml->xpath(trim($match, '{}'));
+						$replacements[$match] = (string) $result[0];
+						break;
+				}
+			}
+			
+			# Build redirect
+			$redirect = str_replace(
+				array_keys($replacements),
+				array_values($replacements),
+				$rule['redirect']
+			);
+			redirect($redirect);
 		}
 		
 	/**

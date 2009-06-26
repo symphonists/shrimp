@@ -3,25 +3,24 @@
 	error_reporting(E_ALL);
 	ini_set("display_errors", 1);
 	
-	require_once(TOOLKIT . '/class.sectionmanager.php');
 	require_once(TOOLKIT . '/class.entrymanager.php');
-	require_once(TOOLKIT . '/class.fieldmanager.php');
+	require_once(TOOLKIT . '/class.frontendpage.php');
 
 	class Extension_Shrimp extends Extension {
 	/*-------------------------------------------------------------------------
 		Definition:
 	-------------------------------------------------------------------------*/
 		
-		public $sm;
-		public $em;
-		public $fm;
+		public static $sm;
+		public static $em;
+		public static $fm;
+		public static $page = null;
 		
 		public function __construct(&$context)
 		{
 			$this->_Parent =& $context['parent'];
-			$this->sm = new SectionManager($this->_Parent);
-			$this->em = new EntryManager($this->_Parent);
-			$this->fm = new FieldManager($this->_Parent);
+			self::$em = new EntryManager($this->_Parent);			
+			self::$page = new FrontendPage($this->_Parent);
 		}
 		
 		public function about()
@@ -34,7 +33,8 @@
 					'name'			=> 'Max Wheeler',
 					'website'		=> 'http://makenosound.com/',
 					'email'			=> 'max@makenosound.com'
-				)
+				),
+				'description'	=> 'Intelligent short URL redirection.'
 			);
 		}
 		
@@ -59,7 +59,8 @@
 				CREATE TABLE IF NOT EXISTS `tbl_shrimp_rules` (
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`section_id` int(11) NOT NULL,
-					`rule` varchar(255) NOT NULL,
+					`redirect` varchar(255) NOT NULL,
+					`datasources` text default NULL,
 					PRIMARY KEY (`id`)
 				)
 			");
@@ -85,14 +86,17 @@
 			
 			# Check ID exists in system
 			$request_id = $request[1];
-			$entries = $this->em->fetch($request_id);
+			$entries = self::$em->fetch($request_id);
 			if(empty($entries)) return false;
 			$entry = $entries[0];
 			
 			# Get the rule by section ID
 			$section_id = $entry->_fields['section_id'];
 			$rule = $this->_get_section_rule($section_id);
-			if( ! isset($rule)) return false;
+			if(empty($rule)) return false;
+			
+			$simplexml = $this->_construct_entry_xml($request_id, $rule['datasources']);
+			print_r($simplexml);
 			
 			exit();
 		}
@@ -117,9 +121,9 @@
 		{
 			if (is_numeric($section_id))
 			{
-				return $this->_Parent->Database->fetchVar("rule", 0, "
+				return $this->_Parent->Database->fetchRow(0, "
 					SELECT
-						s.rule
+						s.redirect, s.datasources 
 					FROM
 						`tbl_shrimp_rules` AS s
 					WHERE
@@ -129,5 +133,21 @@
 				");				
 			}
 			return false;
+		}
+	/**
+		*	Processes relevant datasources and returns as SimpleXML
+		*		@param	$entry_id			int
+		*		@param	$datasources	string
+		* 
+		*/
+		private function _construct_entry_xml($entry_id, $datasources)
+		{
+			$data = new XMLElement('data');
+			self::$page->__processDatasources($datasources, $data, array(
+				'shrimp-entry-id'	=> $entry_id
+			));
+			
+			$simplexml = simplexml_load_string($data->generate(true));
+			return $simplexml;
 		}
 	}

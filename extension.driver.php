@@ -19,7 +19,8 @@
 		public function __construct(&$context)
 		{
 			$this->_Parent =& $context['parent'];
-			self::$em = new EntryManager($this->_Parent);			
+			self::$em = new EntryManager($this->_Parent);	
+			self::$sm = new SectionManager($this->_Parent);		
 			self::$page = new FrontendPage($this->_Parent);
 		}
 		
@@ -46,6 +47,21 @@
 					'delegate'	=> 'FrontendPrePageResolve',
 					'callback'	=> 'hijack_page',
 				),
+				array(
+					'page' => '/system/preferences/',
+					'delegate' => 'AddCustomPreferenceFieldsets',
+					'callback' => 'append_preferences'
+				),
+			);
+		}
+		
+		public function fetchNavigation() {
+			return array(
+				array(
+					'location'  => 200,
+					'name'  => 'Shrimp',
+					'link'  => '/rules/'
+				)
 			);
 		}
 		
@@ -68,8 +84,58 @@
 		
 		public function uninstall()
 		{
-      $this->_Parent->Database->query("DROP TABLE `tbl_shrimp_rules`");
+			Symphony::Database()->query("DROP TABLE `tbl_shrimp_rules`");
 			return true;
+		}
+		
+		public function getRules()
+		{
+			return Symphony::Database()->fetch("
+				SELECT
+					r.*
+				FROM
+					`tbl_shrimp_rules` AS r
+				ORDER BY
+					t.section_id ASC
+			");
+		}
+		
+		public function getRule($id)
+		{
+			return Symphony::Database()->fetchRow(0, "
+				SELECT
+					r.*
+				FROM
+					`tbl_shrimp_rules` AS r
+				WHERE
+					r.id = '{$id}'
+				LIMIT 1
+			");
+		}
+		
+		public function getRuleSections()
+		{
+			return Symphony::Database()->fetchCol("section_id", "
+				SELECT
+					`section_id`
+				FROM
+					`tbl_shrimp_rules`
+				ORDER BY
+					section_id ASC
+			");
+		}
+		
+		public function getSections()
+		{
+			$used = implode($this->getRuleSections(),",");
+			
+			$sql = "SELECT `s`.id,`s`.name,`s`.handle,`s`.navigation_group
+			FROM `tbl_sections` AS `s`
+			WHERE `s`.id NOT IN ({$used})
+			ORDER BY `s`.sortorder ASC
+			";
+			if( ! $sections = Symphony::Database()->fetch($sql)) return false;
+			return $sections;
 		}
 		
 		/*-------------------------------------------------------------------------
@@ -106,9 +172,6 @@
 					case '$root':
 						$replacements[$match] = URL;
 						break;
-					case 'system:id':
-						$replacements[$match] = $request_id;
-						break;
 					default:
 						$result = $simplexml->xpath(trim($match, '{}'));
 						$replacements[$match] = (string) $result[0];
@@ -122,21 +185,24 @@
 				array_values($replacements),
 				$rule['redirect']
 			);
-			redirect($redirect);
+#			redirect($redirect);
+			print_r($redirect);
+			exit();
 		}
 		
+		/*-------------------------------------------------------------------------
+			Helpers:
+		-------------------------------------------------------------------------*/		
 	/**
 		* Retrieves users URL prefix from preferences
 		*
 		*/
 		private function _get_url_prefix()
 		{
-			# Faked for the moment
-			$url_prefix = 'u';
-			return $url_prefix;
+			$val = $this->_Parent->Configuration->get('prefix', 'shrimp');
+			return (isset($val)) ? $val : 's';
 		}
-		
-	/**
+			/**
 		*	Retrieves XPATH template
 		*		@param	$section_id		int
 		* 
@@ -173,5 +239,21 @@
 			
 			$simplexml = simplexml_load_string($data->generate(true));
 			return $simplexml;
+		}
+		
+		/*-------------------------------------------------------------------------
+			Preferences:
+		-------------------------------------------------------------------------*/
+		public function append_preferences($context)
+		{
+			$group = new XMLElement('fieldset');
+			$group->setAttribute('class', 'settings');
+			$group->appendChild(new XMLElement('legend', 'Shrimp'));
+
+			$label = Widget::Label('URL Prefix');
+			$label->appendChild(Widget::Input('settings[shrimp][prefix]', General::Sanitize($this->_get_url_prefix())));
+			$group->appendChild($label);
+						
+			$context['wrapper']->appendChild($group);	
 		}
 	}

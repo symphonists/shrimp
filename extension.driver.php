@@ -90,19 +90,26 @@
 		
 		public function getRules()
 		{
-			return Symphony::Database()->fetch("
+			$rules = Symphony::Database()->fetch("
 				SELECT
 					r.*
 				FROM
 					`tbl_shrimp_rules` AS r
 				ORDER BY
-					t.section_id ASC
+					r.section_id ASC
 			");
+			
+			foreach ($rules as &$rule)
+			{
+				$section = self::$sm->fetch($rule['section_id']);
+				$rule['section_name'] = $section->_data['name'];
+			}
+			return $rules;
 		}
 		
 		public function getRule($id)
 		{
-			return Symphony::Database()->fetchRow(0, "
+			$rule = Symphony::Database()->fetchRow(0, "
 				SELECT
 					r.*
 				FROM
@@ -111,6 +118,9 @@
 					r.id = '{$id}'
 				LIMIT 1
 			");
+			$section = self::$sm->fetch($rule['section_id']);
+			$rule['section_name'] = $section->_data['name'];
+			return $rule;
 		}
 		
 		public function getRuleSections()
@@ -125,13 +135,21 @@
 			");
 		}
 		
-		public function getSections()
+		public function getSections($section_id = NULL)
 		{
-			$used = implode($this->getRuleSections(),",");
+			$used = $this->getRuleSections();
+			if(isset($section_id))
+			{
+				foreach ($used as $key => $used_rule)
+				{
+					if ($section_id == $used_rule) unset($used[$key]);
+				}
+			}
+			if( ! empty($used) AND is_array($used)) $where = 'WHERE `s`.id NOT IN ('.implode($used,",").')';
 			
 			$sql = "SELECT `s`.id,`s`.name,`s`.handle,`s`.navigation_group
 			FROM `tbl_sections` AS `s`
-			WHERE `s`.id NOT IN ({$used})
+			$where
 			ORDER BY `s`.sortorder ASC
 			";
 			if( ! $sections = Symphony::Database()->fetch($sql)) return false;
@@ -159,7 +177,7 @@
 			# Get the rule by section ID
 			$section_id = $entry->_fields['section_id'];
 			$rule = $this->_get_section_rule($section_id);
-			if(empty($rule)) return false;			
+			if(empty($rule)) return false;
 			
 			# Get the XML
 			$simplexml = $this->_construct_entry_xml($request_id, $rule['datasources']);
@@ -171,6 +189,9 @@
 				switch (trim($match, '{}')) {
 					case '$root':
 						$replacements[$match] = URL;
+						break;
+					case 'system:id':
+						$replacements[$match] = $request_id;
 						break;
 					default:
 						$result = $simplexml->xpath(trim($match, '{}'));
@@ -185,8 +206,7 @@
 				array_values($replacements),
 				$rule['redirect']
 			);
-#			redirect($redirect);
-			print_r($redirect);
+			header("Location: $redirect", true, 302);
 			exit();
 		}
 		
@@ -203,7 +223,7 @@
 			return (isset($val)) ? $val : 's';
 		}
 			/**
-		*	Retrieves XPATH template
+		*	Retrieves XPATH rule
 		*		@param	$section_id		int
 		* 
 		*/

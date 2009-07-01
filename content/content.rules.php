@@ -14,9 +14,8 @@
 		protected $_editing = false;
 		protected $_errors = array();
 		protected $_fields = array();
-		protected $_pages = array();
+		protected $_sections = array();
 		protected $_status = '';
-		protected $_templates = array();
 		protected $_uri = null;
 		protected $_valid = true;
 		
@@ -30,21 +29,17 @@
 		
 		public function build($context)
 		{
-			$this->_driver->getSections();
-			exit();
-			
 			if (@$context[0] == 'edit' or @$context[0] == 'new') {
 				if ($this->_editing = $context[0] == 'edit') {
-					$this->_fields = $this->_driver->getRules((integer)$context[1]);
+					$this->_fields = $this->_driver->getRule((integer)$context[1]);
 				}
 				
 				$this->_fields = (isset($_POST['fields']) ? $_POST['fields'] : $this->_fields);
-				$this->_conditions = (isset($_POST['conditions']) ? $_POST['conditions'] : $this->_conditions);
 				$this->_status = $context[2];
-				$this->_pages = $this->_driver->getPages();
+				$this->_sections = $this->_driver->getSections();
 				
 			} else {
-				$this->_templates = $this->_driver->getRules();
+				$this->_rules = $this->_driver->getRules();
 			}
 			
 			parent::build($context);
@@ -74,30 +69,8 @@
 			
 		// Validate: ----------------------------------------------------------
 			
-			if (empty($this->_fields['name'])) {
-				$this->_errors['name'] = 'Name must not be empty.';
-			}
-			
-			foreach ($this->_conditions as $sortorder => $condition) {
-				if (empty($condition['subject'])) {
-					$this->_errors["{$sortorder}:subject"] = 'Subject must not be empty.';
-				}
-				
-				if (empty($condition['sender'])) {
-					$this->_errors["{$sortorder}:sender"] = 'Sender Name must not be empty.';
-				}
-				
-				if (empty($condition['senders'])) {
-					$this->_errors["{$sortorder}:senders"] = 'Senders must not be empty.';
-				}
-				
-				if (empty($condition['recipients'])) {
-					$this->_errors["{$sortorder}:recipients"] = 'Recipients must not be empty.';
-				}
-				
-				if (empty($condition['page'])) {
-					$this->_errors["{$sortorder}:page"] = 'Page must not be empty.';
-				}
+			if (empty($this->_fields['redirect'])) {
+				$this->_errors['redirect'] = 'Redirect must not be empty.';
 			}
 			
 			if (!empty($this->_errors)) {
@@ -107,38 +80,27 @@
 			
 		// Save: --------------------------------------------------------------
 			
-			$this->_fields['conditions'] = (integer)count($this->_conditions);
 			$this->_fields['datasources'] = implode(',', $this->_fields['datasources']);
 			
-			$this->_Parent->Database->insert($this->_fields, 'tbl_etf_templates', true);
+			$this->_Parent->Database->insert($this->_fields, 'tbl_shrimp_rules', true);
 			
-			if (!$this->_editing) {
+			if ( ! $this->_editing) {
 				$redirect_mode = 'created';
-				$template_id = $this->_Parent->Database->fetchVar('id', 0, "
+				$rule_id = $this->_Parent->Database->fetchVar('id', 0, "
 					SELECT
 						e.id
 					FROM
-						`tbl_etf_templates` AS e
+						`tbl_shrimp_rules` AS e
 					ORDER BY
 						e.id DESC
 					LIMIT 1
-				");
-				
+				");				
 			} else {
 				$redirect_mode = 'saved';
-				$template_id = $this->_fields['id'];
+				$rule_id = $this->_fields['id'];
 			}
 			
-			// Remove all existing conditions before inserting the remaining ones
-			$this->_Parent->Database->delete('tbl_etf_conditions', " `template_id` = '{$this->_fields['id']}'");
-
-			foreach ($this->_conditions as $condition) {
-				$condition['template_id'] = $template_id;
-				
-				$this->_Parent->Database->insert($condition, 'tbl_etf_conditions', true);
-			}
-			
-			redirect("{$this->_uri}/templates/edit/{$template_id}/{$redirect_mode}/");
+			redirect("{$this->_uri}/rules/edit/{$rule_id}/{$redirect_mode}/");
 		}
 		
 		public function __viewNew()
@@ -168,11 +130,11 @@
 				if ($action) $this->pageAlert(
 					__(
 						$action, array(
-							__('Template'), 
+							__('Rules'), 
 							DateTimeObj::get(__SYM_TIME_FORMAT__), 
-							URL . '/symphony/extension/emailtemplatefilter/templates/new/', 
-							URL . '/symphony/extension/emailtemplatefilter/templates/',
-							__('Templates')
+							URL . '/symphony/extension/shrimp/rules/new/', 
+							URL . '/symphony/extension/shrimp/rules/',
+							__('Rules')
 						)
 					),
 					Alert::SUCCESS
@@ -181,14 +143,14 @@
 			
 			// Edit:
 			if ($this->_action == 'edit') {
-				if ($this->_template > 0) {
+				if ($this->_rule > 0) {
 					$row = $this->_Parent->Database->fetchRow(0, "
 						SELECT
 							e.*
 						FROM
-							`tbl_etf_templates` AS e
+							`tbl_shrimp_rules` AS e
 						WHERE
-							e.id = {$this->_template}
+							e.id = {$this->_rule}
 					");
 					
 					if (!empty($row)) {
@@ -199,39 +161,65 @@
 				}
 			}
 			
-		// Header: ------------------------------------------------------------
+		# Header: ------------------------------------------------------------
 			
 			$this->setPageType('form');
-			$this->setTitle('Symphony &ndash; Email Templates' . (
+			$this->setTitle('Symphony &ndash; Shrimp Rules' . (
 				$this->_editing ? ' &ndash; ' . $this->_fields['name'] : null
 			));
-			$this->appendSubheading("<a href=\"{$this->_uri}/templates/\">Templates</a> &mdash; " . (
-				$this->_editing ? $this->_fields['name'] : 'Untitled'
+			$this->appendSubheading("<a href=\"{$this->_uri}/rules/\">Rules</a> &mdash; " . (
+				$this->_editing ? $this->_fields['section_name'] : 'Untitled'
 			));
 			
-		// Form: --------------------------------------------------------------
+		# Form: --------------------------------------------------------------
 			
 			$fieldset = new XMLElement('fieldset');
 			$fieldset->setAttribute('class', 'settings');
-			$fieldset->appendChild(new XMLElement('legend', __('Essentials')));
+			$fieldset->appendChild(new XMLElement('legend', __('Details')));
 			
 			if (!empty($this->_fields['id'])) {
 				$fieldset->appendChild(Widget::Input("fields[id]", $this->_fields['id'], 'hidden'));
 			}
 			
-			$label = Widget::Label(__('Name'));
-			$label->appendChild(Widget::Input(
-				'fields[name]',
-				General::sanitize(@$this->_fields['name'])
-			));
+			# Section: --------------------------------------------------------------
 			
-			if (isset($this->_errors['name'])) {
-				$label = Widget::wrapFormElementWithError($label, $this->_errors['name']);
+			$label = Widget::Label(__('Section'));
+			$sections = $this->_driver->getSections($this->_fields['section_id']);
+			$options = array();
+			
+			foreach ($sections as $section) {
+				$selected = ($this->_fields['section_id'] == $section['id']) ? true : false;
+				$options[] = array(
+					$section['id'], $selected, $section['name']
+				);
 			}
 			
+			$label = Widget::Label(__('Section'));
+			$label->appendChild(Widget::Select(
+				"fields[section_id]", $options
+			));
+
 			$fieldset->appendChild($label);
 			
-		// Datasources --------------------------------------------------------
+			# Redirect: --------------------------------------------------------------
+			
+			$label = Widget::Label(__('Redirect'));
+			$label->appendChild(Widget::Input(
+				'fields[redirect]',
+				General::sanitize(@$this->_fields['redirect'])
+			));
+			
+			if (isset($this->_errors['redirect'])) {
+				$label = Widget::wrapFormElementWithError($label, $this->_errors['redirect']);
+			}
+			$help = new XMLElement('p');
+			$help->setAttribute('class', 'help');
+			$help->setValue('To access the XML, use XPath expressions: <code>{datasource/entry/field-one}/static-text/{datasource/entry/field-two}</code>. You can also use the <code>{$root}</code> for your site URL or <code>{system:id}</code> if you don&#8217;t need a datasource.');
+			
+			$fieldset->appendChild($label);
+			$fieldset->appendChild($help);
+			
+		# Datasources --------------------------------------------------------
 			
 			$DSManager = new DatasourceManager($this->_Parent);
 			$datasources = $DSManager->listAll();
@@ -256,44 +244,10 @@
 			
 			$help = new XMLElement('p');
 			$help->setAttribute('class', 'help');
-			$help->setValue(__('The parameter <code>%s</code> can be used in the selected datasources to get related data.', array('$etf-entry-id')));
+			$help->setValue(__('The parameter <code>%s</code> can be used in the selected datasources to get related data.', array('$shrimp-entry-id')));
 			
 			$fieldset->appendChild($label);
 			$fieldset->appendChild($help);
-			$this->Form->appendChild($fieldset);
-			
-		// Conditions -------------------------------------------------------------
-			
-			$fieldset = new XMLElement('fieldset');
-			$fieldset->setAttribute('class', 'settings');
-			$fieldset->appendChild(new XMLElement('legend', __('Conditions')));
-			
-			$div = new XMLElement('div');
-			$div->setAttribute('class', 'subsection');
-			$div->appendChild(new XMLElement('h3', __('Conditions')));
-			$ol = new XMLElement('ol');
-			
-			// Add existing conditions:
-			foreach ($this->_conditions as $sortorder => $condition) {
-				$wrapper = new XMLElement('li');
-				
-				$this->displayCondition($wrapper, $sortorder, $condition);
-				
-				$ol->appendChild($wrapper);
-			}
-			
-			// Add condition template:
-			$wrapper = new XMLElement('li');
-			$wrapper->setAttribute('class', 'template');
-			
-			$this->displayCondition($wrapper, '-1', array(
-				'type'		=> 'XPath Condition'
-			));
-			
-			$ol->appendChild($wrapper);
-			
-			$div->appendChild($ol);
-			$fieldset->appendChild($div);
 			$this->Form->appendChild($fieldset);
 			
 		// Footer: ------------------------------------------------------------
@@ -302,7 +256,7 @@
 			$div->setAttribute('class', 'actions');
 			$div->appendChild(
 				Widget::Input('action[save]',
-					($this->_editing ? 'Save Changes' : 'Create Template'),
+					($this->_editing ? 'Save Changes' : 'Create Rule'),
 					'submit', array(
 						'accesskey'		=> 's'
 					)
@@ -314,7 +268,7 @@
 				$button->setAttributeArray(array(
 					'name'		=> 'action[delete]',
 					'class'		=> 'confirm delete',
-					'title'		=> 'Delete this template'
+					'title'		=> 'Delete this rule'
 				));
 				$div->appendChild($button);
 			}
@@ -332,23 +286,16 @@
 			if (is_array($checked) and !empty($checked)) {
 				switch ($_POST['with-selected']) {
 					case 'delete':
-						foreach ($checked as $template_id) {
+						foreach ($checked as $rule_id) {
 							$this->_Parent->Database->query("
 								DELETE FROM
-									`tbl_etf_templates`
+									`tbl_shrimp_rules`
 								WHERE
-									`id` = {$template_id}
-							");
-							
-							$this->_Parent->Database->query("
-								DELETE FROM
-									`tbl_etf_conditions`
-								WHERE
-									`template_id` = {$template_id}
+									`id` = {$rule_id}
 							");
 						}
 						
-						redirect("{$this->_uri}/templates/");
+						redirect("{$this->_uri}/rules/");
 						break;
 				}
 			}
@@ -356,45 +303,44 @@
 		
 		public function __viewIndex() {
 			$this->setPageType('table');
-			$this->setTitle('Symphony &ndash; Email Templates');
+			$this->setTitle('Symphony &ndash; Shrimp Rules');
 			
-			$this->appendSubheading('Templates', Widget::Anchor(
-				'Create New', "{$this->_uri}/templates/new/",
-				'Create a new email template', 'create button'
+			$this->appendSubheading('Rules', Widget::Anchor(
+				'Create New', "{$this->_uri}/rules/new/",
+				'Create a new rule', 'create button'
 			));
 			
 			$tableHead = array(
-				array('Template Name', 'col'),
-				array('Conditions', 'col')
+				array('Section', 'col'),
+				array('Redirect Rule', 'col')
 			);	
 			
 			$tableBody = array();
 			
-			if (!is_array($this->_templates) or empty($this->_templates)) {
+			if (!is_array($this->_rules) or empty($this->_rules)) {
 				$tableBody = array(
 					Widget::TableRow(array(Widget::TableData(__('None Found.'), 'inactive', null, count($tableHead))))
 				);
 				
 			} else {
-				foreach ($this->_templates as $template) {
-					$template = (object)$template;
+				foreach ($this->_rules as $rule) {
+					$rule = (object) $rule;
 					
 					$col_name = Widget::TableData(
 						Widget::Anchor(
-							$template->name,
-							"{$this->_uri}/templates/edit/{$template->id}/"
+							$rule->section_name,
+							"{$this->_uri}/rules/edit/{$rule->id}/"
 						)
 					);
-					$col_name->appendChild(Widget::Input("items[{$template->id}]", null, 'checkbox'));
+					$col_name->appendChild(Widget::Input("items[{$rule->id}]", null, 'checkbox'));
 					
-					if (!empty($template->conditions)) {
-						$col_conditions = Widget::TableData($template->conditions);
-						
+					if (isset($rule->redirect)) {
+						$col_redirect = Widget::TableData($rule->redirect);
 					} else {
-						$col_conditions = Widget::TableData('None', 'inactive');
+						$col_redirect = Widget::TableData('None', 'inactive');
 					}
 					
-					$tableBody[] = Widget::TableRow(array($col_name, $col_conditions), null);
+					$tableBody[] = Widget::TableRow(array($col_name, $col_redirect), null);
 				}
 			}
 			

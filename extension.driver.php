@@ -1,9 +1,7 @@
 <?php
 
-	error_reporting(E_ALL);
-	ini_set("display_errors", 1);
-	
 	require_once(TOOLKIT . '/class.entrymanager.php');
+	require_once(TOOLKIT . '/class.sectionmanager.php');
 	require_once(TOOLKIT . '/class.frontendpage.php');
 
 	class Extension_Shrimp extends Extension {
@@ -29,7 +27,7 @@
 			return array(
 				'name'			=> 'Shrimp',
 				'version'		=> '1.0.0',
-				'release-date'	=> '2009-06-24',
+				'release-date'	=> '2009-07-01',
 				'author'		=> array(
 					'name'			=> 'Max Wheeler',
 					'website'		=> 'http://makenosound.com/',

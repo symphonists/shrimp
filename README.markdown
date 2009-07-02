@@ -7,11 +7,10 @@ Requirements: Symphony 2.0.3
 
 ## Installation ##
  
-1. *If you've already installed the [Email Template Filter](http://github.com/rowan-lewis/emailtemplatefilter/tree/master) extension you can skip this step.* Edit `symphony/lib/toolkit/class.frontendpage.php` and replace the function on line 416 with this:
+1. *If you've already installed the [Email Template Filter](http://github.com/rowan-lewis/emailtemplatefilter/tree/master) extension you can skip this step.* Edit `symphony/lib/toolkit/class.frontendpage.php` and replace the function on line 441 with this:
 
-		public function __processDatasources(, &,  = array())
-		{
-			if (trim() == '') return;
+		public function __processDatasources($datasources, &$wrapper, $params = array()) {
+			if (trim($datasources) == '') return;
 			
 			$datasources = preg_split('/,\s*/i', $datasources, -1, PREG_SPLIT_NO_EMPTY);
 			$datasources = array_map('trim', $datasources);
@@ -36,21 +35,21 @@ Requirements: Symphony 2.0.3
 			
 			foreach ($dsOrder as $handle) {
 				$this->_Parent->Profiler->seed();
-		
+				
 				$ds = $pool[$handle];
 				$ds->processParameters(array('env' => $this->_env, 'param' => $this->_param));
-		
+				
 				if ($xml = $ds->grab($this->_env['pool'])) {
 					if (is_object($xml)) {
 						$wrapper->appendChild($xml);
-				
+						
 					} else {
 						$wrapper->setValue($wrapper->getValue() . self::CRLF . "\t" . trim($xml));
 					}
 				}
-		
+				
 				$this->_Parent->Profiler->sample($handle, PROFILE_LAP, 'Datasource');
-		
+				
 				unset($ds);
 			}
 		}

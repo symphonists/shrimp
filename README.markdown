@@ -1,66 +1,19 @@
 # Shrimp #
 
-Version: 1.0.0  
+Version: 1.0.1  
 Author: [Max Wheeler](max@makenosound.com)  
-Build Date: 1st July 2009  
-Requirements: Symphony 2.0.3
+Build Date: 2010-08-24
+Requirements: Symphony 2.1
 
 ## Installation ##
  
-1. *If you've already installed the [Email Template Filter](http://github.com/rowan-lewis/emailtemplatefilter/tree/master) extension you can skip this step.* Edit `symphony/lib/toolkit/class.frontendpage.php` and replace the function on line 441 with this:
+1. Upload the 'shrimp' folder in this archive to your Symphony 'extensions' folder.
 
-		public function __processDatasources($datasources, &$wrapper, $params = array()) {
-			if (trim($datasources) == '') return;
-			
-			$datasources = preg_split('/,\s*/i', $datasources, -1, PREG_SPLIT_NO_EMPTY);
-			$datasources = array_map('trim', $datasources);
-			
-			if (!is_array($datasources) || empty($datasources)) return;
-			
-			$this->_env['pool'] = $params;
-			$pool = $params;
-			$dependencies = array();
-			
-			foreach ($datasources as $handle) {
-				$this->_Parent->Profiler->seed();
-				
-				$pool[$handle] =& $this->DatasourceManager->create($handle, null, false);
-				
-				$dependencies[$handle] = $pool[$handle]->getDependencies();
-				
-				unset($ds);
-			}
-			
-			$dsOrder = $this->__findDatasourceOrder($dependencies);
-			
-			foreach ($dsOrder as $handle) {
-				$this->_Parent->Profiler->seed();
-				
-				$ds = $pool[$handle];
-				$ds->processParameters(array('env' => $this->_env, 'param' => $this->_param));
-				
-				if ($xml = $ds->grab($this->_env['pool'])) {
-					if (is_object($xml)) {
-						$wrapper->appendChild($xml);
-						
-					} else {
-						$wrapper->setValue($wrapper->getValue() . self::CRLF . "\t" . trim($xml));
-					}
-				}
-				
-				$this->_Parent->Profiler->sample($handle, PROFILE_LAP, 'Datasource');
-				
-				unset($ds);
-			}
-		}
-	
-2. Upload the 'shrimp' folder in this archive to your Symphony 'extensions' folder.
+2. Enable it by selecting the "Shrimp", choose Enable from the with-selected menu, then click Apply.
 
-3. Enable it by selecting the "Shrimp", choose Enable from the with-selected menu, then click Apply.
+3. Change the URL prefix under "System > Preferences", the default is "s".
 
-4. Change the URL prefix under "System > Preferences", the default is "s".
-
-5. Add your redirection rules under "System > Shrimp".
+4. Add your redirection rules under "System > Shrimp".
 
 ## Usage ##
 
@@ -70,12 +23,13 @@ If a matching rule is found, any attached datasources are passed the entry id as
 
 ## Shout Outs ##
 
-Large sections of this extension has been adapted from [Rowan Lewis'](http://rowanlewis.com) [Email Template Filter](http://github.com/rowan-lewis/emailtemplatefilter/tree/master) extension.
+Large sections of this extension has been adapted from [Rowan Lewis'](http://rowanlewis.com) [Email Template Filter](http://github.com/rowan-lewis/emailtemplatefilter/tree/master) extension. The name "Shrimp" is stolen shamelessly from [Dan Benjamin's](http://hivelogic.com/) similarly featured extension for Expression Engine.
 
 
+## Changelog ##
 
-
-
+1.0.1 -- Made compatible with Symphony 2.1, no longer requires changes to `class.frontendpage.php`  
+1.0.0 -- Initial commit
 
 
 

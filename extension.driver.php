@@ -26,8 +26,8 @@
 		{
 			return array(
 				'name'			=> 'Shrimp',
-				'version'		=> '1.0.0',
-				'release-date'	=> '2009-07-01',
+				'version'		=> '1.0.1',
+				'release-date'	=> '2010-08-24',
 				'author'		=> array(
 					'name'			=> 'Max Wheeler',
 					'website'		=> 'http://makenosound.com/',

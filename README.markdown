@@ -2,7 +2,7 @@
 
 Version: 1.0.1  
 Author: [Max Wheeler](max@makenosound.com)  
-Build Date: 2010-08-24
+Build Date: 2010-08-24  
 Requirements: Symphony 2.1
 
 ## Installation ##

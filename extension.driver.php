@@ -251,7 +251,7 @@
 		private function _construct_entry_xml($entry_id, $datasources)
 		{
 			$data = new XMLElement('data');
-			self::$page->__processDatasources($datasources, $data, array(
+			self::$page->processDatasources($datasources, $data, array(
 				'shrimp-entry-id'	=> $entry_id
 			));
 			

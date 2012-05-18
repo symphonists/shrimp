@@ -2,12 +2,15 @@
 <extension id="shrimp" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
 	<name>Shrimp</name>
 	<description>Intelligent per-section redirection rules</description>
-	<repo type="github">https://github.com/makenosound/shrimp</repo>
+	<repo type="github">https://github.com/symphonists/shrimp</repo>
 	<url type="discuss">http://symphony-cms.com/discuss/thread/23680/</url>
 	<types>
 		<type>Other</type>
 	</types>
 	<authors>
+		<author>
+			<name github="symphonists" symphony="community">Symphony Community</name>
+		</author>
 		<author>
 			<name github="makenosound" symphony="Makenosound">Max Wheeler</name>
 		</author>

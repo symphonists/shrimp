@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="shrimp" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+	<name>Shrimp</name>
+	<description>Intelligent per-section redirection rules</description>
+	<repo type="github">https://github.com/makenosound/shrimp</repo>
+	<url type="discuss">http://symphony-cms.com/discuss/thread/23680/</url>
+	<types>
+		<type>Other</type>
+	</types>
+	<authors>
+		<author>
+			<name github="makenosound" symphony="Makenosound">Max Wheeler</name>
+		</author>
+	</authors>
+	<releases>
+		<release version="1.0.1" date="2010-08-24" min="2.0.7" max="2.1.x" />
+	</releases>
+</extension>
